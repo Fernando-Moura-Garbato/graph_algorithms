@@ -1,0 +1,10 @@
+{
+  "dependencies": {
+    "@azure/msal-node": "^2.14.0",
+    "@microsoft/microsoft-graph-client": "^3.0.7"
+  },
+  "scripts": {
+    "start": "node --env-file=secrets.env main.js"
+  },
+  "type": "module"
+}
