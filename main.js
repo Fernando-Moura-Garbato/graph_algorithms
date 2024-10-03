@@ -1,5 +1,7 @@
 import { ConfidentialClientApplication } from "@azure/msal-node";
 import { Client } from "@microsoft/microsoft-graph-client";
+import pkg from 'pg';
+const { Client: PgClient } = pkg;
 
 //Configuração do MSAL
 const msalConfig = {
@@ -47,28 +49,26 @@ const graphClient = Client.initWithMiddleware({authProvider});
 //Para validar objetos e variáveis, é sempre bom logar.
 
 //Requests
-await graphClient.api('/users')
-            .select('id,displayName,mail')
-            .top(5)
-            .get()
-            .then( (resposta) => {
-                console.log(resposta['@odata.nextLink'])
-            })
+
+// await graphClient.api('/users/suporte01@grupounus.com.br/drive/root/children')
+//             .select('name')
+//             .get()
+//             .then( (resposta) => {
+//                 resposta.value.forEach(item => {
+//                     console.log(item.name);
+//                 })
+//             })
 
 
 
-async function getUsers(){
-    for(let i = 0; i++;){
-          await graphClient.api('/users')
-            .select('id,displayName,mail')
-            .top(5)
-            .get()
-            .then( (resposta) => {
-                console.log(resposta['@odata.nextLink'])
-            })
-    }
-}
-
+// await graphClient.api('/drives')
+// .top(5)
+// .get()
+// .then( (resposta) => {
+//     console.log(resposta);
+//     graphClient.api(resposta['@odata.context']).get().then( (resposta2) => console.log(resposta2));
+//     graphClient.api(resposta['@odata.nextLink']).get().then( (resposta3) => console.log(resposta3)) ;
+// })
 
 /*
     //REQUESTS
@@ -88,7 +88,19 @@ async function getUsers(){
     console.log(usuarios)
 */
 
+let pgInst = new PgClient({
+    user: process.env.PG_USER,
+    host: process.env.PG_HOST,
+    database: process.env.PG_DATABASE,
+    password: process.env.PG_PASS,
+    port: process.env.PG_PORT,
+})
+
+pgInst.connect().then( (resultado) => {console.log(resultado)})
+
+await pgInst.query("SELECT * FROM teste1").then( (resultado) => {console.log(resultado)})
 
 
 
+pgInst.end()
 console.log('\nFinal.')
