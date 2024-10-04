@@ -1,4 +1,0 @@
-node_modules/
-package-lock.json
-secrets.env
-pg_details.env

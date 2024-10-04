@@ -48,8 +48,9 @@ const graphClient = Client.initWithMiddleware({authProvider});
 //É válido relembrar que as respostas do servidor geralmente são objetos preenchindos por diversos metadados.
 //Para validar objetos e variáveis, é sempre bom logar.
 
-//Requests
 
+
+//Requests
 // await graphClient.api('/users/suporte01@grupounus.com.br/drive/root/children')
 //             .select('name')
 //             .get()
@@ -59,48 +60,24 @@ const graphClient = Client.initWithMiddleware({authProvider});
 //                 })
 //             })
 
+await graphClient.api('/users/suporte02@grupounus.com.br/messages').get().then( (resposta) => {console.log(resposta)})
 
 
-// await graphClient.api('/drives')
-// .top(5)
-// .get()
-// .then( (resposta) => {
-//     console.log(resposta);
-//     graphClient.api(resposta['@odata.context']).get().then( (resposta2) => console.log(resposta2));
-//     graphClient.api(resposta['@odata.nextLink']).get().then( (resposta3) => console.log(resposta3)) ;
+
+
+// let pgInst = new PgClient({
+//     user: process.env.PG_USER,
+//     host: process.env.PG_HOST,
+//     database: process.env.PG_DATABASE,
+//     password: process.env.PG_PASS,
+//     port: process.env.PG_PORT,
 // })
 
-/*
-    //REQUESTS
-    async function listUsers() {
-        try {
-            const users = await graphClient
-                .api('/users') // Graph API endpoint to list all users
-                .select('id,displayName,mail') // Select fields you want to retrieve
-                .get();
-            return users.value; // Return the array of users
-        } catch (error) {
-            console.error("Error fetching users:", error);
-        }
-    }
+// pgInst.connect().then( (resultado) => {console.log(resultado)})
 
-    let usuarios = listUsers()
-    console.log(usuarios)
-*/
-
-let pgInst = new PgClient({
-    user: process.env.PG_USER,
-    host: process.env.PG_HOST,
-    database: process.env.PG_DATABASE,
-    password: process.env.PG_PASS,
-    port: process.env.PG_PORT,
-})
-
-pgInst.connect().then( (resultado) => {console.log(resultado)})
-
-await pgInst.query("SELECT * FROM teste1").then( (resultado) => {console.log(resultado)})
+// await pgInst.query("SELECT * FROM teste1").then( (resultado) => {console.log(resultado)})
 
 
 
-pgInst.end()
+//pgInst.end()
 console.log('\nFinal.')
