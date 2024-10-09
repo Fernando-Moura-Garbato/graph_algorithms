@@ -2,6 +2,7 @@ import { ConfidentialClientApplication } from "@azure/msal-node";
 import { Client } from "@microsoft/microsoft-graph-client";
 import pkg from 'pg';
 const { Client: PgClient } = pkg;
+import * as fs from 'node:fs/promises'
 
 //Configuração do MSAL
 const msalConfig = {
@@ -50,7 +51,11 @@ const graphClient = Client.initWithMiddleware({authProvider});
 
 
 
-//Requests
+//**************//
+//---REQUESTS---//
+//**************//
+
+// Obtendo os nomes de todos os arquivos de um drive
 // await graphClient.api('/users/suporte01@grupounus.com.br/drive/root/children')
 //             .select('name')
 //             .get()
@@ -60,11 +65,51 @@ const graphClient = Client.initWithMiddleware({authProvider});
 //                 })
 //             })
 
-await graphClient.api('/users/suporte02@grupounus.com.br/messages').get().then( (resposta) => {console.log(resposta)})
+//Obtendo um valor específico
+//await graphClient.api('/users/suporte02@grupounus.com.br/messages').get().then( (resposta) => {console.log(resposta.value[5].subject)})
+
+async function folderSearch(user, folderId, counter, search){
+    let folder = await graphClient.api('users/' + `${user}` + '/drive/items/' + `${folderId}` + '/children').get()
+    for(let i = 0; i < folder.value.length; i++){
+        if(folder.value[i].name.includes(search)){
+            counter++;
+        }
+        if('folder' in folder.value[i]){
+            folderSearch(user, folder.value[i].id, counter, search)
+        }
+    }
+}
+
+console.log(await graphClient.api('users/suporte02@grupounus.com.br/drive/root/children').get())
 
 
+async function officeSearch(clientVal) {
+    for(let i = 0; i < clientVal.value.length; i++){
+        let usuario = clientVal.value[i].userPrincipalName;
+        await handle.writeFile(clientVal.value[i].displayName + ';');
+        
+        await graphClient.api('users/suporte02@grupounus.com.br/drive/root/children').get()
+
+    }
+}
 
 
+let handle = await fs.open('C:/Users/fernando.garbato/Desktop/graph_demo/teste.txt', 'w')
+//Paginação de dados
+// try{
+//     let resposta = await graphClient.api('/users').get();
+//     await officeSearch(resposta);
+//     let nextPage = resposta['@odata.nextLink'];
+//     while (nextPage!=undefined){
+//         let respostaProx = await graphClient.api(nextPage).get();
+//         await officeSearch(respostaProx);
+//         nextPage = respostaProx["@odata.nextLink"]
+//     }
+// } catch(error){
+//     console.log(error);
+// }
+
+//Input à database
 // let pgInst = new PgClient({
 //     user: process.env.PG_USER,
 //     host: process.env.PG_HOST,
