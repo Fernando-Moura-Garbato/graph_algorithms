@@ -124,9 +124,9 @@ async function emailSearch(call, user){
     if(call['@odata.nextLink']){
         let nextCall = await graphClient.api(call['@odata.nextLink']).get();
         let nextSearch = await emailSearch(nextCall, user);
-        counter.csv = counter.csv + emailSearch.csv
-        counter.docx = counter.docx + emailSearch.docx
-        counter.xlsx = counter.xlsx + emailSearch.xlsx
+        counter.csv += nextSearch.csv
+        counter.docx += nextSearch.docx
+        counter.xlsx += counter.xlsx + nextSearch.xlsx
     }
     return counter;
 }
