@@ -55,61 +55,60 @@ const graphClient = Client.initWithMiddleware({authProvider});
 //---REQUESTS---//
 //**************//
 
-// Obtendo os nomes de todos os arquivos de um drive
-// await graphClient.api('/users/suporte01@grupounus.com.br/drive/root/children')
-//             .select('name')
-//             .get()
-//             .then( (resposta) => {
-//                 resposta.value.forEach(item => {
-//                     console.log(item.name);
-//                 })
-//             })
-
-//Obtendo um valor específico
-//await graphClient.api('/users/suporte02@grupounus.com.br/messages').get().then( (resposta) => {console.log(resposta.value[5].subject)})
-
-
 //This function grabs a user, a folder ID and a search term, creates an API call and passes the result through an algorithm to count how many
 //times the search term appears on file names. It also recursively searches through folders within that folder, and in both cases, works with
 //data pagination. The repeatNext() function is declared within merely for organization.
-async function folderSearch(user, folderId, search){
-    let counter = 0;
-    let folder = await graphClient.api('users/' + `${user}` + '/drive/items/' + `${folderId}` + '/children').get()
+async function folderSearch(user, folder){
+    let counter = {csv:0, docx:0, xlsx:0, csvSize:0, docxSize:0, xlsxSize:0};
+
     for(let i = 0; i < folder.value.length; i++){
-        if(folder.value[i].name.includes(search)){
-            counter++;
+    
+        if(folder.value[i].name.includes('csv')){
+            counter.csv++;
+            counter.csvSize += folder.value[i].size;
         }
+        if(folder.value[i].name.includes('docx')){
+            counter.docx++;
+            counter.docxSize += folder.value[i].size;
+        }
+        if(folder.value[i].name.includes('xlsx')){
+            counter.xlsx++;
+            counter.xlsxSize += folder.value[i].size;
+        }
+
+
         if('folder' in folder.value[i]){
-            counter = counter + await folderSearch(user, folder.value[i].id, search)
-        }
-        async function repeatNext(folder, search){
-                let counterNext = 0;
-                let chamada = await graphClient.api(folder['@odata.nextLink']).get();
-                for(let i = 0; i < chamada.value.length; i++){
-                    if(chamada.value[i].name.includes(search)){
-                        counterNext++;
-                    }
-                    if('folder' in chamada.value[i]){
-                        counterNext = counterNext + await folderSearch(user, chamada.value[i].id, search)
-                    }
-                    if(i === chamada.value.length - 1 && chamada['@odata.nextLink']){
-                        counterNext = counterNext + await repeatNext(chamada['@odata.nextLink'], search)
-                    }            
-                }
-                return counterNext;
-        }
-        if(i === folder.value.length - 1 && folder['@odata.nextLink']){
-        counter = counter + await repeatNext(folder, search)
-        }
+            let folderCall = await graphClient.api('users/' + `${user}` + '/drive/items/' + `${folder.value[i].id}` + '/children').get();
+            let folderCallResult = await folderSearch(user, folderCall);
+            counter.csv += folderCallResult.csv;
+            counter.csvSize += folderCallResult.csvSize;
+            counter.docx += folderCallResult.docx;
+            counter.docxSize += folderCallResult.docxSize;
+            counter.xlsx += folderCallResult.xlsx;
+            counter.xlsxSize += folderCallResult.xlsxSize;
+            }
     }
+
+    if(folder['@odata.nextLink']){
+        let nextCall = await graphClient.api(folder['@odata.nextLink']).get();
+        let nextCallResult = await folderSearch(user, nextCall);
+        counter.csv += nextCallResult.csv;
+        counter.csvSize += nextCallResult.csvSize;
+        counter.docx += nextCallResult.docx;
+        counter.docxSize += nextCallResult.docxSize;
+        counter.xlsx += nextCallResult.xlsx;
+        counter.xlsxSize += nextCallResult.xlsxSize;
+    }
+
     return counter;
 }
-//This function looks within each message body preview in search for invites, and then 
+//This function looks within each message body preview in search for sharing invites, and if it is, then the function looks within the full message body to
+//search for keywords (csv, docx, xlsx) so it can define what was shared.
 async function emailSearch(call, user){
     let counter = {csv:0, docx:0, xlsx:0};
     for(let i = 0; i < call.value.length; i++){
         if(call.value[i].bodyPreview.includes('invited you to edit a file')){
-            let messageWithHtml = await graphClient.api('users/' + `${user}` + '/messages/' + `${call.value[i].id}`).get();
+            let messageWithHtml = await graphClient.api('users/' + `${user}` + '/messages/' + `${call.value[i].id}`).select('body').get();
             if(messageWithHtml.body.content.includes('csv')){
                 counter.csv++
             }
@@ -124,42 +123,38 @@ async function emailSearch(call, user){
     if(call['@odata.nextLink']){
         let nextCall = await graphClient.api(call['@odata.nextLink']).get();
         let nextSearch = await emailSearch(nextCall, user);
-        counter.csv = counter.csv + emailSearch.csv
-        counter.docx = counter.docx + emailSearch.docx
-        counter.xlsx = counter.xlsx + emailSearch.xlsx
+        counter.csv += nextSearch.csv
+        counter.docx += nextSearch.docx
+        counter.xlsx += nextSearch.xlsx
     }
     return counter;
 }
 
-let call1 = await graphClient.api('users/suporte02@grupounus.com.br/messages').get();
-console.log(await emailSearch(call1, 'suporte02@grupounus.com.br'));
+//**EMAIL LIST CALL PREVIEW
+//let chamada = await graphClient.api('users/suporte02@grupounus.com.br/mailFolders/sentItems/messages').select('id,bodyPreview').top(1000).get();
+//**ONEDRIVE LIST CALL PREVIEW
+//let chamada = await graphClient.api('users/suporte02@grupounus.com.br/drive/root/children').top(100).select('file,folder,name,id,size').get();
 
-
+let handle = await fs.open('C:/Users/fernando.garbato/Desktop/graph_demo/teste.txt', 'w')
 
 async function officeSearch(usuarios) {
     for(let i = 0; i < usuarios.value.length; i++){
+        //Defines the user and writes name
         let usuario = usuarios.value[i].userPrincipalName;
         await handle.writeFile(usuarios.value[i].displayName + ';');
+        //Calls for email data about csv, docx and xlsx files shared, then writes that in csv format
+        let emailCall = await graphClient('users/' + `${usuario}` + '/mailFolders/sentItems/messages').select('id,bodyPreview').top(1000).get()
+        let emailInfo = await emailSearch(emailCall, usuario);
+        await handle.writeFile(`${emailInfo.csv}` + ';' + `${emailInfo.xlsx}` + ';' + `${emailInfo.docx}` + ';')
 
     }
 }
 
 
-let handle = await fs.open('C:/Users/fernando.garbato/Desktop/graph_demo/teste.txt', 'w')
 
-//Paginação de dados
-// try{
-//     let resposta = await graphClient.api('/users').get();
-//     await officeSearch(resposta);
-//     let nextPage = resposta['@odata.nextLink'];
-//     while (nextPage!=undefined){
-//         let respostaProx = await graphClient.api(nextPage).get();
-//         await officeSearch(respostaProx);
-//         nextPage = respostaProx["@odata.nextLink"]
-//     }
-// } catch(error){
-//     console.log(error);
-// }
+//officeSearch(await graphClient.api('users').select('userPrincipalName,displayName').top(1000).get())
+
+console.log(await graphClient.api('users').get())
 
 //Input à database
 // let pgInst = new PgClient({
