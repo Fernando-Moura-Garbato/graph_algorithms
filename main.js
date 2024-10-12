@@ -107,7 +107,7 @@ async function folderSearch(user, folder){
 async function emailSearch(call, user){
     let counter = {csv:0, docx:0, xlsx:0};
     for(let i = 0; i < call.value.length; i++){
-        if(call.value[i].bodyPreview.includes('invited you to edit a file')){
+        if(call.value[i].bodyPreview.includes('invited you to edit a file') || call.value[i].bodyPreview.includes('convidou você para editar um arquivo')){
             let messageWithHtml = await graphClient.api('users/' + `${user}` + '/messages/' + `${call.value[i].id}`).select('body').get();
             if(messageWithHtml.body.content.includes('csv')){
                 counter.csv++
@@ -135,26 +135,48 @@ async function emailSearch(call, user){
 //**ONEDRIVE LIST CALL PREVIEW
 //let chamada = await graphClient.api('users/suporte02@grupounus.com.br/drive/root/children').top(100).select('file,folder,name,id,size').get();
 
-let handle = await fs.open('C:/Users/fernando.garbato/Desktop/graph_demo/teste.txt', 'w')
+let handle = await fs.open('C:/Users/Fernando/Desktop/Code/graph_algoritmo/teste.txt', 'w')
 
 async function officeSearch(usuarios) {
     for(let i = 0; i < usuarios.value.length; i++){
-        //Defines the user and writes name
-        let usuario = usuarios.value[i].userPrincipalName;
-        await handle.writeFile(usuarios.value[i].displayName + ';');
-        //Calls for email data about csv, docx and xlsx files shared, then writes that in csv format
-        let emailCall = await graphClient('users/' + `${usuario}` + '/mailFolders/sentItems/messages').select('id,bodyPreview').top(1000).get()
-        let emailInfo = await emailSearch(emailCall, usuario);
-        await handle.writeFile(`${emailInfo.csv}` + ';' + `${emailInfo.xlsx}` + ';' + `${emailInfo.docx}` + ';')
 
+        if(usuarios.value[i].givenName !=null && usuarios.value[i].accountEnabled == true){
+            //Defines the user and writes name
+            let usuario = usuarios.value[i].userPrincipalName;
+            await handle.writeFile(usuarios.value[i].displayName + ';');
+            try{
+                //Calls for email data about csv, docx and xlsx files shared, then writes that in csv format
+                let emailCall = await graphClient.api('users/' + `${usuario}` + '/mailFolders/sentItems/messages').top(1000).select('id,bodyPreview').get();
+                let emailInfo = await emailSearch(emailCall, usuario);
+                await handle.writeFile(`${emailInfo.csv}` + ';' + `${emailInfo.xlsx}` + ';' + `${emailInfo.docx}` + ';');
+            } catch(error){
+                await handle.writeFile('\n');
+                continue;
+            }
+            try{
+            //Calls for OneDrive file data, then writes that info in csv format
+            let driveCall = await graphClient.api('users/' + `${usuario}` + '/drive/root/children').top(100).select('file,folder,name,id,size').get();
+            let driveInfo = await folderSearch(usuario, driveCall);
+            await handle.writeFile(`${driveInfo.xlsx}` + ';' + `${(driveInfo.xlsxSize/1024**2).toFixed(2)}` + ';' + `${driveInfo.csv}` + ';' + `${(driveInfo.csvSize/1024**2).toFixed(2)}` + ';' + `${driveInfo.docx}` + ';' + `${(driveInfo.docxSize/1024**2).toFixed(2)}`)
+            await handle.writeFile('\n');
+            } catch(error){
+                await handle.writeFile('\n');
+                continue;
+            }
+        }
     }
 }
 
 
+ let usersCall = await graphClient.api('users').select('userPrincipalName,displayName,givenName,accountEnabled').top(999).get()
+ officeSearch(usersCall)
 
-//officeSearch(await graphClient.api('users').select('userPrincipalName,displayName').top(1000).get())
 
-console.log(await graphClient.api('users').get())
+//let chamada = await graphClient.api('users/suporte02@grupounus.com.br/mailFolders/sentItems/messages').select('id,bodyPreview').top(1000).get();
+//console.log(await emailSearch(chamada, 'suporte02@grupounus.com.br'))
+
+
+
 
 //Input à database
 // let pgInst = new PgClient({
