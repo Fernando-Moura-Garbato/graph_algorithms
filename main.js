@@ -29,10 +29,10 @@ const msalClient = new ConfidentialClientApplication(msalConfig);
 const daemonRequest = {
     scopes: ["https://graph.microsoft.com/.default"]
 }
-const tentToken = await msalClient.acquireTokenByClientCredential(daemonRequest)
 
 //Adquire o token
 async function getToken(){
+    const tentToken = await msalClient.acquireTokenByClientCredential(daemonRequest)
     return tentToken;
 }
 
@@ -151,16 +151,20 @@ async function officeSearch(usuarios) {
                 await handle.writeFile(`${emailInfo.csv}` + ';' + `${emailInfo.xlsx}` + ';' + `${emailInfo.docx}` + ';');
             } catch(error){
                 await handle.writeFile('\n');
+                console.log(usuarios.value[i].displayName);
+                console.log(error);
                 continue;
             }
             try{
-            //Calls for OneDrive file data, then writes that info in csv format
-            let driveCall = await graphClient.api('users/' + `${usuario}` + '/drive/root/children').top(100).select('file,folder,name,id,size').get();
-            let driveInfo = await folderSearch(usuario, driveCall);
-            await handle.writeFile(`${driveInfo.xlsx}` + ';' + `${(driveInfo.xlsxSize/1024**2).toFixed(2)}` + ';' + `${driveInfo.csv}` + ';' + `${(driveInfo.csvSize/1024**2).toFixed(2)}` + ';' + `${driveInfo.docx}` + ';' + `${(driveInfo.docxSize/1024**2).toFixed(2)}`)
-            await handle.writeFile('\n');
+                //Calls for OneDrive file data, then writes that info in csv format
+                let driveCall = await graphClient.api('users/' + `${usuario}` + '/drive/root/children').top(100).select('file,folder,name,id,size').get();
+                let driveInfo = await folderSearch(usuario, driveCall);
+                await handle.writeFile(`${driveInfo.xlsx}` + ';' + `${(driveInfo.xlsxSize/1024**2).toFixed(2)}` + ';' + `${driveInfo.csv}` + ';' + `${(driveInfo.csvSize/1024**2).toFixed(2)}` + ';' + `${driveInfo.docx}` + ';' + `${(driveInfo.docxSize/1024**2).toFixed(2)}`)
+                await handle.writeFile('\n');
             } catch(error){
                 await handle.writeFile('\n');
+                console.log(usuarios.value[i].displayName);
+                console.log(error);
                 continue;
             }
         }
@@ -168,8 +172,8 @@ async function officeSearch(usuarios) {
 }
 
 
- let usersCall = await graphClient.api('users').select('userPrincipalName,displayName,givenName,accountEnabled').top(999).get()
- officeSearch(usersCall)
+ let usersCall = await graphClient.api('users').select('userPrincipalName,displayName,givenName,accountEnabled').top(999).get();
+ await officeSearch(usersCall)
 
 
 //let chamada = await graphClient.api('users/suporte02@grupounus.com.br/mailFolders/sentItems/messages').select('id,bodyPreview').top(1000).get();
