@@ -78,7 +78,7 @@ async function folderSearch(user, folder){
 
 
         if('folder' in folder.value[i]){
-            let folderCall = await graphClient.api('users/' + `${user}` + '/drive/items/' + `${folder.value[i].id}` + '/children').get();
+            let folderCall = await graphClient.api('users/' + `${user}` + '/drive/items/' + `${folder.value[i].id}` + '/children').top(100).select('file,folder,name,id,size').get();
             let folderCallResult = await folderSearch(user, folderCall);
             counter.csv += folderCallResult.csv;
             counter.csvSize += folderCallResult.csvSize;
@@ -90,7 +90,7 @@ async function folderSearch(user, folder){
     }
 
     if(folder['@odata.nextLink']){
-        let nextCall = await graphClient.api(folder['@odata.nextLink']).get();
+        let nextCall = await graphClient.api(folder['@odata.nextLink']).top(100).select('file,folder,name,id,size').get();
         let nextCallResult = await folderSearch(user, nextCall);
         counter.csv += nextCallResult.csv;
         counter.csvSize += nextCallResult.csvSize;
@@ -135,11 +135,11 @@ async function emailSearch(call, user){
 //**ONEDRIVE LIST CALL PREVIEW
 //let chamada = await graphClient.api('users/suporte02@grupounus.com.br/drive/root/children').top(100).select('file,folder,name,id,size').get();
 
-let handle = await fs.open('C:/Users/Fernando/Desktop/Code/graph_algoritmo/teste.txt', 'w')
+let handle = await fs.open('C:/Users/fernando.garbato/Desktop/graph_demo/teste.txt', 'w')
 
 async function officeSearch(usuarios) {
     for(let i = 0; i < usuarios.value.length; i++){
-
+        console.log(i,' ', usuarios.value[i].displayName);
         if(usuarios.value[i].givenName !=null && usuarios.value[i].accountEnabled == true){
             //Defines the user and writes name
             let usuario = usuarios.value[i].userPrincipalName;
@@ -172,12 +172,12 @@ async function officeSearch(usuarios) {
 }
 
 
- let usersCall = await graphClient.api('users').select('userPrincipalName,displayName,givenName,accountEnabled').top(999).get();
- await officeSearch(usersCall)
+//  let usersCall = await graphClient.api('users').select('userPrincipalName,displayName,givenName,accountEnabled').top(999).get();
+//  await officeSearch(usersCall)
 
 
-//let chamada = await graphClient.api('users/suporte02@grupounus.com.br/mailFolders/sentItems/messages').select('id,bodyPreview').top(1000).get();
-//console.log(await emailSearch(chamada, 'suporte02@grupounus.com.br'))
+// let chamada = await graphClient.api('users/suporte03@grupounus.com.br/drive/root/children').top(100).select('file,folder,name,id,size').get();
+// console.log(await folderSearch('suporte03@grupounus.com.br', chamada));
 
 
 
