@@ -1,55 +1,8 @@
-import { ConfidentialClientApplication } from "@azure/msal-node";
-import { Client } from "@microsoft/microsoft-graph-client";
 import pkg from 'pg';
 const { Client: PgClient } = pkg;
 import * as fs from 'node:fs/promises'
 
-//Configuração do MSAL
-const msalConfig = {
-    auth: {
-        clientId: process.env.CLIENT_ID,
-        authority: process.env.AUTHORITY,
-        clientSecret: process.env.CLIENT_SECRET
-    }
-};
-
-//ensureScope() - Função para admitir novas permissões, desnecessária ao momento
-/*
-function ensureScope (scope) {
-    if (!msalRequest.scopes.some((s) => s.toLowerCase() === scope.toLowerCase())) {
-        msalRequest.scopes.push(scope);
-    }
-}
-*/
-
-//Inicializa um cliente daemon do MSAL usando msalConfig
-const msalClient = new ConfidentialClientApplication(msalConfig);
-
-//Com o cliente ativo, cria uma request pro Graph e adquire um token
-const daemonRequest = {
-    scopes: ["https://graph.microsoft.com/.default"]
-}
-
-//Adquire o token
-async function getToken(){
-    const tentToken = await msalClient.acquireTokenByClientCredential(daemonRequest)
-    return tentToken;
-}
-
-// Middleware
-const authProvider = {
-    getAccessToken: async () => {
-        const tentToken = await getToken();
-        return tentToken.accessToken;
-    }
-};
-
-// Inicializa o cliente do graph com Middleware
-const graphClient = Client.initWithMiddleware({authProvider});
-//É válido relembrar que as respostas do servidor geralmente são objetos preenchindos por diversos metadados.
-//Para validar objetos e variáveis, é sempre bom logar.
-
-
+import {graphClient} from './auth.js';
 
 //**************//
 //---REQUESTS---//
@@ -166,6 +119,7 @@ async function officeSearch(usuarios) {
                 console.log(usuarios.value[i].displayName);
                 console.log(error);
                 continue;
+
             }
         }
     }
@@ -179,8 +133,60 @@ async function officeSearch(usuarios) {
 // let chamada = await graphClient.api('users/suporte03@grupounus.com.br/drive/root/children').top(100).select('file,folder,name,id,size').get();
 // console.log(await folderSearch('suporte03@grupounus.com.br', chamada));
 
+// let result = await graphClient.api('users/suporte02@grupounus.com.br/messages').get();
+// const d = new Date("2022-03-25T00:00:00Z");
+// console.log(result.value[0].receivedDateTime < d);
 
 
+let emailUseHandle = await fs.open('C:/Users/fernando.garbato/Desktop/graph_demo/generated/email_use.txt', 'w')
+
+
+async function emailUseReport(call){
+    for(let i = 0; i < call.value.length; i++){
+    let tipo = "";
+    if(call.value[i].userType == "Guest"){
+        tipo = "Externo"
+    } else if(call.value[i].surname){
+        tipo = "Usuário"
+    } else {
+        tipo = "Caixa compartilhada"
+    }
+    try{
+        await emailUseHandle.write(
+            `${call.value[i].displayName}` + ';' + 
+            `${call.value[i].mail}` + ';' + 
+            `${tipo}` + ';'
+        );
+        let emailUseData = await graphClient.api("users/" + `${call.value[i].userPrincipalName}` + "/messages")
+        .select("id")
+        .filter("receivedDateTime ge 2024-10-13T00:00:00Z")
+        .count(true)
+        .get();
+        let emailSentData = await graphClient.api("users/" + `${call.value[i].userPrincipalName}` + "/mailFolders/sentItems/messages")
+        .select("id")
+        .filter("sentDateTime ge 2024-10-13T00:00:00Z")
+        .count(true)
+        .get();
+        await emailUseHandle.writeFile(String( `${emailUseData["@odata.count"] - emailSentData["@odata.count"]}`) + ';');
+        await emailUseHandle.writeFile(String(emailSentData["@odata.count"]) + "\n");
+    } catch(error){
+        console.log(error);
+        await emailUseHandle.writeFile("\n");
+        continue;
+    }
+    }
+    if(call['@odata.nextLink']){
+        emailUseReport(await graphClient.api(call["@odata.nextLink"]).select("userPrincipalName, displayName, mail, surname, userType").get());
+    }
+}
+
+//   let emailUseReportCall = await graphClient.api("users").select("userPrincipalName, displayName, mail, surname, userType").get()
+//   emailUseReport(emailUseReportCall);
+
+console.log(await graphClient.api('users/suporte02@grupounus.com.br').select("userType").get())
+
+
+//console.log(await graphClient.api("users/suporte02@grupounus.com.br/messages").get())
 
 //Input à database
 // let pgInst = new PgClient({
