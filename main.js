@@ -136,56 +136,6 @@ async function officeSearch(usuarios) {
 // let result = await graphClient.api('users/suporte02@grupounus.com.br/messages').get();
 // const d = new Date("2022-03-25T00:00:00Z");
 // console.log(result.value[0].receivedDateTime < d);
-
-
-let emailUseHandle = await fs.open('C:/Users/fernando.garbato/Desktop/graph_demo/generated/email_use.txt', 'w')
-
-
-async function emailUseReport(call){
-    for(let i = 0; i < call.value.length; i++){
-    let tipo = "";
-    if(call.value[i].userType == "Guest"){
-        tipo = "Externo"
-    } else if(call.value[i].surname){
-        tipo = "Usuário"
-    } else {
-        tipo = "Caixa compartilhada"
-    }
-    try{
-        await emailUseHandle.write(
-            `${call.value[i].displayName}` + ';' + 
-            `${call.value[i].mail}` + ';' + 
-            `${tipo}` + ';'
-        );
-        let emailUseData = await graphClient.api("users/" + `${call.value[i].userPrincipalName}` + "/messages")
-        .select("id")
-        .filter("receivedDateTime ge 2024-10-13T00:00:00Z")
-        .count(true)
-        .get();
-        let emailSentData = await graphClient.api("users/" + `${call.value[i].userPrincipalName}` + "/mailFolders/sentItems/messages")
-        .select("id")
-        .filter("sentDateTime ge 2024-10-13T00:00:00Z")
-        .count(true)
-        .get();
-        await emailUseHandle.writeFile(String( `${emailUseData["@odata.count"] - emailSentData["@odata.count"]}`) + ';');
-        await emailUseHandle.writeFile(String(emailSentData["@odata.count"]) + "\n");
-    } catch(error){
-        console.log(error);
-        await emailUseHandle.writeFile("\n");
-        continue;
-    }
-    }
-    if(call['@odata.nextLink']){
-        emailUseReport(await graphClient.api(call["@odata.nextLink"]).select("userPrincipalName, displayName, mail, surname, userType").get());
-    }
-}
-
-//   let emailUseReportCall = await graphClient.api("users").select("userPrincipalName, displayName, mail, surname, userType").get()
-//   emailUseReport(emailUseReportCall);
-
-console.log(await graphClient.api('users/suporte02@grupounus.com.br').select("userType").get())
-
-
 //console.log(await graphClient.api("users/suporte02@grupounus.com.br/messages").get())
 
 //Input à database
